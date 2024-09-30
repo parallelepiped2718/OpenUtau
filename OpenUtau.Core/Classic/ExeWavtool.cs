@@ -214,11 +214,23 @@ namespace OpenUtau.Classic {
             return windowsPath;
         }
 
+        bool checkElf (FileStream stream)
+        {
+            byte[] magicNumber = new byte[4];
+            byte[] elfNumber = {0x7F, 0x45, 0x4C, 0x46};
+            stream.Read(magicNumber, 0, 4);
+            stream.Seek(0, System.IO.SeekOrigin.Begin);
+            for (int i = 0; i < 4; i++)
+                if (magicNumber[i] != elfNumber[i]) return false;
+            return true;
+        }
+
         //Parse the wrapper shell script created by the user during the resampler install process on linux for the path
         //to the resampler's exe file. Should work for most paths and files that people would make, but there may be edge cases.
         //Intended only for use on linux
         string ResolveResamplerExePathLinux (string wrapperPath) {
             using (FileStream stream = File.Open(wrapperPath, FileMode.Open)) {
+                if (checkElf(stream)) return wrapperPath; //dont try to parse the file if its a native execuatble (such as worldline.so)
                 using (StreamReader reader = new StreamReader(stream)) {
                     string line;
                     int start = -1;
@@ -250,7 +262,7 @@ namespace OpenUtau.Classic {
                         throw new InvalidDataException("Could not find path to .exe resampler in shell script wrapper");
                     else {
                         string ret = line.Substring(start, end - start);
-                        Console.WriteLine(string.Format("Resolved Resampler Exe Path {0}", ret));
+                        Console.WriteLine(string.Format("Resolved resampler exe path {0} from wrapper path {1}", ret, wrapperPath));
                         return ret;
                     }
                 }
